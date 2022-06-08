@@ -5,7 +5,8 @@ matplotlib.use('Qt5Agg')
 from PyQt5 import QtCore, QtWidgets, QtGui
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-
+import traceback
+import time
 
 class Tabs(QtWidgets.QTabWidget):
     def __init__(self, parent):
@@ -93,7 +94,7 @@ class DataDisplay(QtWidgets.QSplitter):
 
             # FFT bin size is 1 / Δt -- assume our actual error is 10% of this
             freq_precision = 0.1 / (self.data[0][-1] - self.data[0][0])
-            print(freq_precision)
+            # print(freq_precision)
             freq_sigfigs = int(np.ceil(np.log10(ω / (2*π) / freq_precision)))
 
             self.table.setItem(0, 0, QtWidgets.QTableWidgetItem(SI_format(ω / (2*π), 'Hz', freq_sigfigs)))
@@ -203,6 +204,21 @@ class DataDisplay(QtWidgets.QSplitter):
         self.fig_canvas.draw()
 
 
+def error_popup(e, ok=False):
+    mb = QtWidgets.QMessageBox
+    ec = e.__class__.__name__
+    msg = mb()
+    msg.setIcon(mb.Critical)
+    msg.setWindowTitle(str(ec))
+    msg.setText(str(ec) + ": " + str(e))
+    msg.setDetailedText(traceback.format_exc())
+    msg.setStyleSheet("QTextEdit {font-family: Courier; min-width: 600px;}")
+    if ok:
+        msg.setStandardButtons(mb.Cancel | mb.Ok)
+    else:
+        msg.setStandardButtons(mb.Cancel)
+    return msg.exec_() == mb.Ok
+
 class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, *args, **kwargs):
@@ -218,10 +234,57 @@ class MainWindow(QtWidgets.QMainWindow):
         open_action.triggered.connect(self.open_file)
 
         self.file_menu.addAction(open_action)
+
+        if HAS_VXI11:
+            self.eth_menu = self.menu.addMenu('Ethernet')
+            self.ETH_IP = False
+
+            setup_action = QtWidgets.QAction("&Ethernet Setup", self)
+            setup_action.setShortcut('Ctrl+E')
+            setup_action.triggered.connect(self.ethernet_setup)
+            self.eth_menu.addAction(setup_action)
+
+            eth_action = QtWidgets.QAction("&Acquire", self)
+            eth_action.setShortcut('Ctrl+A')
+            eth_action.triggered.connect(self.ethernet_acquire)
+            self.eth_menu.addAction(eth_action)
+
         self.setCentralWidget(self.tabs)
 
         # self.load_file("NewFile1.csv")
-        self.open_file()
+        # self.open_file()
+
+    def ethernet_setup(self):
+        while True:
+            ip, ok = QtWidgets.QInputDialog.getText(self, 'Ethernet Setup', 'Enter the IP address:')
+            if ok:
+                try:
+                    idn = idn_eth(ip)
+                    print(f'Scope at {ip} returned IDN:\n "{idn}"')
+                except Exception as e:
+                    self.ETH_IP = False
+                    if not error_popup(e, True):
+                        break
+                else:
+                    self.ETH_IP = ip
+                    break
+            else:
+                break
+
+    def ethernet_acquire(self):
+        if not self.ETH_IP:
+            self.ethernet_setup()
+
+        if not self.ETH_IP:
+            return
+
+        try:
+            data = load_eth(self.ETH_IP)
+        except Exception as e:
+            error_popup(e)
+        else:
+            display = DataDisplay(self, data)
+            self.tabs.add_tab(display, time.strftime('Eth: %H:%M:%S'))
 
 
     def open_file(self):
@@ -234,15 +297,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             data = load_osc_csv(fn)
         except Exception as e:
-            ec = e.__class__.__name__
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Critical)
-            msg.setWindowTitle(str(ec))
-            msg.setText(str(ec) + ": " + str(e))
-            msg.setDetailedText(traceback.format_exc())
-            msg.setStyleSheet("QTextEdit {font-family: Courier; min-width: 600px;}")
-            msg.setStandardButtons(QMessageBox.Cancel)
-            msg.exec_()
+            error_popup(e)
         else:
             display = DataDisplay(self, data)
             self.tabs.add_tab(display, os.path.split(fn)[1])

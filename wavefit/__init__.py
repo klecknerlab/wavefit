@@ -15,17 +15,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import matplotlib
 import numpy as np
 π = np.pi
-# matplotlib.use('Qt5Agg')
 import os, sys
 from scipy import optimize
 
-# from PyQt5 import QtCore, QtWidgets, QtGui
+try:
+    import vxi11
+except:
+    print('Warning: VXI11 not installed; data loading through ethernet disabled.\n(to intall, run: pip install python-vxi11)')
+    HAS_VXI11 = False
+else:
+    HAS_VXI11 = True
 
-# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-# from matplotlib.figure import Figure
 
 def cosine_fit(t, x0, A, ω, ϕ):
     return x0 + A * np.cos(ω * t + ϕ)
@@ -119,7 +121,51 @@ def load_osc_csv(fn, offset=True):
     if offset: data[0] += start
 
     return data
-    
+
+def idn_eth(ip):
+    inst = vxi11.Instrument(ip)
+    inst.timeout = 0.5
+    reply = inst.ask("*IDN?")
+    inst.close()
+    return reply
+
+def load_eth(ip, channels=(1, 2)):
+    if not HAS_VXI11:
+        raise RuntimeError("VXI11 not installed; can't load data over ethernet!\n(to intall, run: pip install python-vxi11)")
+
+    inst = vxi11.Instrument(ip)
+    inst.timeout = 3
+
+    inst.write(":STOP")
+
+    data = []
+
+    for channel in channels:
+        inst.write(f":WAV:SOUR:CHAN{channel:d}")
+        inst.write(":WAV:FORM BYTE")
+        inst.write(":WAV:DATA?")
+
+        raw = inst.read_raw()
+        if raw[0:1] != b'#':
+            raise ValueError(f'First byte of raw data should be #, found {chr(dat[0])}')
+        N_head = int(raw[1:2])
+        N_points = int(raw[2:2+N_head])
+
+        raw = np.frombuffer(raw[2+N_head:2+N_head+N_points], dtype='u1')
+
+        preamble = list(map(float, inst.ask(':WAV:PRE?').split(',')))
+
+        if not data:
+            # If we haven't already, write a time channel to the output
+            data.append((np.arange(len(raw)) - (preamble[6] + preamble[5])) * preamble[4])
+
+        data.append((raw - (preamble[9] + preamble[8])) * preamble[7])
+
+    inst.write(":RUN")
+    inst.close()
+
+    return tuple(data)
+
 
 SI_PREFIX = {
     -18: "a", -15: "f", -12: "p", -9: "n", -6: "μ", -3: "m", 0: "", +3: "k",
