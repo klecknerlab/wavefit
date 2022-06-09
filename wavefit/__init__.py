@@ -141,7 +141,7 @@ def load_eth(ip, channels=(1, 2)):
     data = []
 
     for channel in channels:
-        inst.write(f":WAV:SOUR:CHAN{channel:d}")
+        inst.write(f":WAV:SOUR CHAN{channel:d}")
         inst.write(":WAV:FORM BYTE")
         inst.write(":WAV:DATA?")
 
