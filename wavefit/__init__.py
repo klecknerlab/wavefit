@@ -214,3 +214,53 @@ def SI_format(x, units='', sig_figs=4):
         return num + units
     else:
         return num.strip()
+
+def save_csv(fn, data, fit=[], harmonics=None):
+    cols = []
+    headings = []
+
+    for i, dat in enumerate(data):
+        cols.append(dat)
+        if i == 0:
+            headings.append('t (s)')
+        elif i == 1:
+            headings.append('V_ref')
+        elif i == 2:
+            headings.append('V_sig')
+        else:
+            headings.append(f'V_sig{i-1}')
+
+        if i > 0 and i <= len(fit):
+            headings.append(headings[-1] + ' fit')
+            cols.append(fit[i-1])
+
+    if harmonics:
+        headings += ["", "Harmonic", "Frequency (Hz)", "Amplitude (V)", "Phase Delay (rad)"]
+        cols += [[], [], [], [], []]
+        for n in range(1, harmonics['num harmonics'] + 1):
+            cols[-4].append(n)
+            cols[-3].append(harmonics[f'ω{n}'] / (2*π))
+            cols[-2].append(harmonics[f'A{n}'])
+            cols[-1].append(harmonics[f'ϕ{n}'])
+
+        cols[-4].append('ref')
+        cols[-3].append(harmonics[f'ref ω'] / (2*π))
+        cols[-2].append(harmonics[f'ref A'])
+        cols[-1].append(harmonics[f'ref ϕ'])
+
+    # 169.236.119.238
+
+    with open(fn, 'wt') as f:
+        f.write(','.join(headings) + '\n')
+
+        for i in range(max(map(len, cols))):
+            items = []
+            lnz = 0
+            for j, col in enumerate(cols):
+                if i < len(col):
+                    items.append(str(col[i]))
+                    lnz = j
+                else:
+                    items.append("")
+
+            f.write(','.join(items[:lnz+1]) + '\n')

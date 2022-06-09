@@ -23,6 +23,8 @@ class Tabs(QtWidgets.QTabWidget):
         self.removeTab(index)
         self.pages.pop(index).deleteLater()
 
+    def current_tab(self):
+        return self.pages[self.currentIndex()]
 
 class DataDisplay(QtWidgets.QSplitter):
     def __init__(self, parent, data, harmonics=5):
@@ -123,6 +125,12 @@ class DataDisplay(QtWidgets.QSplitter):
             self.layout.addWidget(note)
 
         self.draw_plot()
+
+    def save_csv(self, fn):
+        args = [fn, self.data]
+        if hasattr(self, 'harmonics'):
+            args += [[self.ref_fit, self.sig_fit], self.harmonics]
+        save_csv(*args)
 
     def plot_detail(self):
         self.detail_plot = True
@@ -232,8 +240,13 @@ class MainWindow(QtWidgets.QMainWindow):
         open_action.setShortcut('Ctrl+O')
         # openAction.setStatusTip('Open document')
         open_action.triggered.connect(self.open_file)
-
         self.file_menu.addAction(open_action)
+
+        save_action = QtWidgets.QAction('&Save CSV', self)
+        save_action.setShortcut('Ctrl+S')
+        # openAction.setStatusTip('Open document')
+        save_action.triggered.connect(self.save_file)
+        self.file_menu.addAction(save_action)
 
         if HAS_VXI11:
             self.eth_menu = self.menu.addMenu('Ethernet')
@@ -256,7 +269,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def ethernet_setup(self):
         while True:
-            ip, ok = QtWidgets.QInputDialog.getText(self, 'Ethernet Setup', 'Enter the IP address:')
+            ip, ok = QtWidgets.QInputDialog.getText(self, 'Ethernet Setup',
+                'Enter the IP address:', text = self.ETH_IP if self.ETH_IP else "")
             if ok:
                 try:
                     idn = idn_eth(ip)
@@ -301,6 +315,12 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             display = DataDisplay(self, data)
             self.tabs.add_tab(display, os.path.split(fn)[1])
+
+    def save_file(self):
+        fn, ext = QtWidgets.QFileDialog.getSaveFileName(self, 'Save CSV Data',
+            os.getcwd(), "CSV (*.csv)")
+        if fn:
+            self.tabs.current_tab().save_csv(fn)
 
 
 def wavefit_qt_app():
