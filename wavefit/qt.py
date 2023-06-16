@@ -56,6 +56,7 @@ class DataDisplay(QtWidgets.QSplitter):
             )
 
             self.detail_plot = False
+
         else:
             self.detail_plot = True
 
@@ -214,12 +215,22 @@ class DataDisplay(QtWidgets.QSplitter):
 
 def error_popup(e, ok=False):
     mb = QtWidgets.QMessageBox
-    ec = e.__class__.__name__
+    if isinstance(e, str):
+        title = "error"
+        text = e
+        detail = none
+    else:
+        ec = e.__class__.__name__
+        title = str(ec)
+        text = str(ec) + ": " + str(e)
+        detail = traceback.format_exc()
+
     msg = mb()
     msg.setIcon(mb.Critical)
-    msg.setWindowTitle(str(ec))
-    msg.setText(str(ec) + ": " + str(e))
-    msg.setDetailedText(traceback.format_exc())
+    msg.setWindowTitle(title)
+    msg.setText(text)
+    if detail:
+        msg.setDetailedText(detail)
     msg.setStyleSheet("QTextEdit {font-family: Courier; min-width: 600px;}")
     if ok:
         msg.setStandardButtons(mb.Cancel | mb.Ok)
@@ -297,8 +308,11 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             error_popup(e)
         else:
-            display = DataDisplay(self, data)
-            self.tabs.add_tab(display, time.strftime('Eth: %H:%M:%S'))
+            if (not len(data)) or (len(data[0]) < 10):
+                error_popup("Oscilloscope returned null data...")
+            else:
+                display = DataDisplay(self, data)
+                self.tabs.add_tab(display, time.strftime('Eth: %H:%M:%S'))
 
 
     def open_file(self):
