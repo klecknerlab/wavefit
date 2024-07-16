@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-#
 #
-# Copyright 2022 Dustin Kleckner
+# Copyright 2024 Dustin Kleckner
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ except:
     HAS_VXI11 = False
 else:
     HAS_VXI11 = True
+    from .oscope import get_oscope
 
 
 def cosine_fit(t, x0, A, ω, ϕ):
@@ -131,7 +132,7 @@ def idn_eth(ip):
 
 def load_eth(ip, channels=(1, 2)):
     if not HAS_VXI11:
-        raise RuntimeError("VXI11 not installed; can't load data over ethernet!\n(to intall, run: pip install python-vxi11)")
+        raise RuntimeError("VXI11 not installed; can't load data over ethernet!\n(to install, run: pip install python-vxi11)")
 
     inst = vxi11.Instrument(ip)
     inst.timeout = 3
@@ -247,8 +248,6 @@ def save_csv(fn, data, fit=[], harmonics=None):
         cols[-3].append(harmonics[f'ref ω'] / (2*π))
         cols[-2].append(harmonics[f'ref A'])
         cols[-1].append(harmonics[f'ref ϕ'])
-
-    # 169.236.119.238
 
     with open(fn, 'wt') as f:
         f.write(','.join(headings) + '\n')

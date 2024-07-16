@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='wavefit',
-    version='0.1',
+    version='0.2',
     description='Python-based software to find harmonic amplitudes and phases of signals relative to a reference.',
     url='https://github.com/klecknerlab/wavefit',
     author='Dustin Kleckner',

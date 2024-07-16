@@ -284,10 +284,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 'Enter the IP address:', text = self.ETH_IP if self.ETH_IP else "")
             if ok:
                 try:
-                    idn = idn_eth(ip)
-                    print(f'Scope at {ip} returned IDN:\n "{idn}"')
+                    self.oscope = get_oscope(ip)
+                    # idn = idn_eth(ip)
+                    # print(f'Scope at {ip} returned IDN:\n "{idn}"')
                 except Exception as e:
-                    self.ETH_IP = False
+                    self.oscope = None
+                    # self.ETH_IP = False
                     if not error_popup(e, True):
                         break
                 else:
@@ -297,14 +299,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 break
 
     def ethernet_acquire(self):
-        if not self.ETH_IP:
+        if not getattr(self, 'oscope', False):
             self.ethernet_setup()
 
-        if not self.ETH_IP:
+        if not getattr(self, 'oscope', False):
             return
 
         try:
-            data = load_eth(self.ETH_IP)
+            # data = load_eth(self.ETH_IP)
+            data = self.oscope.read_channels((1, 2))
         except Exception as e:
             error_popup(e)
         else:
