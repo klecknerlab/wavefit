@@ -55,6 +55,7 @@ class TBS2000B:
         if isinstance(channel, int):
             channel = f'CH{channel}'
 
+        self.inst.write('DATA INIT')
         self.inst.write('DATA:SOU ' + channel)
 
         fmt = self.inst.ask('WFMO?').split(';')
@@ -99,6 +100,7 @@ class TBS2000B:
 def get_oscope(inst):
     if not isinstance(inst, vxi11.vxi11.Instrument):
         inst = vxi11.Instrument(inst)
+        inst.timeout = 1
 
     idn = inst.ask('*IDN?')
 

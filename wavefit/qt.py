@@ -80,6 +80,7 @@ class DataDisplay(QtWidgets.QSplitter):
             self.ref_fit = cosine_fit(data[0], *(self.harmonics[l] for l in ('ref offset', 'ref A', 'ref ω', 'ref ϕ')))
             self.ref_fit1 = cosine_fit(data[0], 0.5, 0.5, *(self.harmonics[l] for l in ('ref ω', 'ref ϕ')))
             self.sig_fit = harmonic_reconstruct(data[0], self.harmonics)
+            self.sig_offset = (self.data[2] - self.sig_fit).mean()
 
             self.table = QtWidgets.QTableWidget(self.num_harmonics+1, 5, self)
             self.layout.addWidget(self.table)
@@ -176,7 +177,8 @@ class DataDisplay(QtWidgets.QSplitter):
 
             # self.axes.plot(self.t, self.data[1], '.')
 
-            self.axes.plot(self.t, self.data[2], '.', color='C1')
+            # offset = self.data[2].mean()
+            self.axes.plot(self.t, self.data[2] - self.sig_offset, '.', color='C1')
             # self.axes.plot(self.t, self.ref_fit)
             self.axes.plot(self.t, self.sig_fit, 'k--')
 
@@ -205,8 +207,8 @@ class DataDisplay(QtWidgets.QSplitter):
                 self.axes.plot(self.t, self.data[i], '.', label=label)
 
             if hasattr(self, 'ref_fit'):
-                self.axes.plot(self.t, self.ref_fit, 'k-', 'fit')
-                self.axes.plot(self.t, self.sig_fit, 'k-')
+                self.axes.plot(self.t, self.ref_fit, 'k-', label='fit')
+                self.axes.plot(self.t, self.sig_fit + self.sig_offset, 'k-')
 
                 self.axes.legend()
 
